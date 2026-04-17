@@ -1,15 +1,39 @@
+# Bytecode / build
 __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
+*.egg
+.eggs/
 dist/
 build/
-.eggs/
-*.egg
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
+*.so
+
+# Virtual environments
 .venv/
 venv/
-*.so
+
+# Testing / coverage
+.pytest_cache/
+.hypothesis/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+
+# Static analysis / typing
+.ruff_cache/
+.mypy_cache/
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Maintainer-only docs (kept local, not in repo)
+RELEASING.md

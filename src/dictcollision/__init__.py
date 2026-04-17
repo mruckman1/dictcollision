@@ -42,7 +42,7 @@ Based on: Ruckman (2026), "The Dictionary Collision Effect
 in Computational Decipherment." See github.com/mruckman1/signal-isolation-paper.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 from dictcollision._collision import (
     character_frequencies,

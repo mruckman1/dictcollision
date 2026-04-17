@@ -33,7 +33,15 @@ that.
 
 ```bash
 pip install dictcollision
-pip install "dictcollision[viz]"   # optional matplotlib plots
+pip install "dictcollision[viz]"   # with matplotlib
+```
+
+Or with [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv add dictcollision                 # into a uv project
+uv pip install dictcollision         # into the active venv
+uv tool install dictcollision        # install the CLI globally
 ```
 
 ## Quick start

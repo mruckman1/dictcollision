@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 (2026-04-16)
+
+- Docs: add uv install instructions (`uv add`, `uv pip install`, `uv tool install`).
+- Housekeeping: expanded `.gitignore` to cover Hypothesis, coverage, IDE,
+  and editor artifacts.
+
 ## 0.2.0 (2026-04-16)
 
 New features:
