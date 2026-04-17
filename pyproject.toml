@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dictcollision"
-version = "0.1.1"
+version = "0.2.0"
 description = "Calibrate dictionary hit rates in computational decipherment. Detects when short decoded strings collide with dictionary entries by chance."
 readme = "README.md"
 license = {text = "MIT"}
@@ -38,7 +38,7 @@ classifiers = [
 
 [project.optional-dependencies]
 viz = ["matplotlib>=3.5"]
-dev = ["pytest>=7.0", "pytest-cov", "ruff"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff", "hypothesis>=6.0"]
 
 [project.urls]
 Repository = "https://github.com/mruckman1/dictcollision"
