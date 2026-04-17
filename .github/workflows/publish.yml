@@ -1,0 +1,93 @@
+name: Publish
+
+# Fires when a tag matching v* is pushed, e.g. v0.2.0, v1.3.7-rc1.
+# Manual dispatch is also allowed for debugging — it runs the build+test
+# steps but the guard in the `pypi` and `release` jobs prevents an
+# accidental publish when there's no tag.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so release notes can reference prior tags
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Install Python + deps
+        run: |
+          uv python install 3.12
+          uv sync --all-extras
+
+      - name: Verify tag matches pyproject.toml and __init__.py
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PYPROJECT=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          INITPY=$(uv run python -c "import re; print(re.search(r'__version__\s*=\s*\"([^\"]+)\"', open('src/dictcollision/__init__.py').read()).group(1))")
+          if [ "$TAG" != "$PYPROJECT" ] || [ "$TAG" != "$INITPY" ]; then
+            echo "::error::Version mismatch: tag=$TAG, pyproject=$PYPROJECT, __init__.py=$INITPY"
+            exit 1
+          fi
+          echo "Version verified: $TAG"
+
+      - name: Run tests
+        run: uv run pytest -q
+
+      - name: Build wheel and sdist
+        run: uv build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    # Uploads to PyPI via Trusted Publishing (OIDC). No API token required —
+    # PyPI verifies the workflow identity via the id-token. Configure at:
+    #   https://pypi.org/manage/project/dictcollision/settings/publishing/
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  release:
+    # Creates the GitHub Release and attaches the built artifacts.
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
