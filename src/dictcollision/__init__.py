@@ -24,7 +24,7 @@ Based on: Ruckman (2026), "The Dictionary Collision Effect
 in Computational Decipherment."
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from dictcollision._collision import (
     character_frequencies,

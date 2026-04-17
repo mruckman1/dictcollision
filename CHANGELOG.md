@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 (2026-04-16)
+
+- Docs: add PyPI badges, LaTeX-formatted collision equation,
+  link to the accompanying paper repository. No code changes.
+
 ## 0.1.0 (2026-04-16)
 
 - Initial release
