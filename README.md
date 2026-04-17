@@ -1,5 +1,9 @@
 # dictcollision
 
+[![PyPI](https://img.shields.io/pypi/v/dictcollision)](https://pypi.org/project/dictcollision/)
+[![Python](https://img.shields.io/pypi/pyversions/dictcollision)](https://pypi.org/project/dictcollision/)
+[![License](https://img.shields.io/pypi/l/dictcollision)](https://github.com/mruckman1/dictcollision/blob/main/LICENSE)
+
 **Your decipherment reports a 43% dictionary hit rate. Is that real?**
 
 `dictcollision` answers this question. When decoded strings are short
@@ -62,10 +66,10 @@ for r in ranked:
 
 ## The core equation
 
-The predicted noise floor for dictionary *D* against decoded text with
-character distribution *p* is:
+The predicted noise floor for dictionary $D$ against decoded text with
+character distribution $p$ is:
 
-> **r̂ = Σ<sub>w∈D</sub> Π<sub>i</sub> p(wᵢ)**
+$$\hat{r} \\;=\\; \sum_{w \in D}\\; \prod_{i=1}^{|w|} p(w_i)$$
 
 For every word in the dictionary, multiply together the character
 frequencies of your decoded output. Sum. That number is how many of
@@ -88,6 +92,15 @@ Null corpora are generated from the decoded text's character bigram
 distribution, preserving character-pair frequencies and token lengths
 while destroying word identity.
 
+## Paper
+
+The methodology, experiments, and validation behind this package are
+described in:
+
+Ruckman, M. (2026). *The Dictionary Collision Effect in Computational
+Decipherment.* Source, figures, and reproduction code:
+https://github.com/mruckman1/signal-isolation-paper
+
 ## Citation
 
 If you use this package in your research, please cite:
@@ -96,7 +109,8 @@ If you use this package in your research, please cite:
 @article{ruckman2026dictcollision,
   title={The Dictionary Collision Effect in Computational Decipherment},
   author={Ruckman, Matthew},
-  year={2026}
+  year={2026},
+  url={https://github.com/mruckman1/signal-isolation-paper}
 }
 ```
 

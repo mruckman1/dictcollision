@@ -43,7 +43,7 @@ dev = ["pytest>=7.0", "pytest-cov", "ruff"]
 [project.urls]
 Repository = "https://github.com/mruckman1/dictcollision"
 Documentation = "https://github.com/mruckman1/dictcollision#usage"
-Paper = "https://github.com/mruckman1/signal_isolation"
+Paper = "https://github.com/mruckman1/signal-isolation-paper"
 Issues = "https://github.com/mruckman1/dictcollision/issues"
 
 [tool.hatch.build.targets.wheel]
