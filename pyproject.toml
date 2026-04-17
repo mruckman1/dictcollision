@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dictcollision"
+version = "0.1.0"
+description = "Calibrate dictionary hit rates in computational decipherment. Detects when short decoded strings collide with dictionary entries by chance."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Matthew Ruckman", email = "mruckman1@gmail.com"},
+]
+keywords = [
+    "decipherment",
+    "cryptanalysis",
+    "dictionary",
+    "calibration",
+    "NLP",
+    "signal-isolation",
+    "collision",
+    "computational-linguistics",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Text Processing :: Linguistic",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.5"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff"]
+
+[project.urls]
+Repository = "https://github.com/mruckman1/dictcollision"
+Documentation = "https://github.com/mruckman1/dictcollision#usage"
+Paper = "https://github.com/mruckman1/signal_isolation"
+Issues = "https://github.com/mruckman1/dictcollision/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dictcollision"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 99
