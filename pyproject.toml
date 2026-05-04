@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dictcollision"
-version = "0.2.1"
+version = "0.3.0"
 description = "Calibrate dictionary hit rates in computational decipherment. Detects when short decoded strings collide with dictionary entries by chance."
 readme = "README.md"
 license = {text = "MIT"}

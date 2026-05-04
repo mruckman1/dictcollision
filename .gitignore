@@ -20,6 +20,7 @@ venv/
 coverage.xml
 htmlcov/
 .tox/
+archive/
 
 # Static analysis / typing
 .ruff_cache/

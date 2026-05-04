@@ -17,7 +17,7 @@ large enough that anything would match?
 
 | Domain | "Decoded tokens" | "Dictionary" | "Real signal" means |
 |---|---|---|---|
-| **Decipherment / cryptanalysis** | candidate plaintext | language wordlist | the decode works |
+| **Decipherment / cryptanalysis** | candidate plaintext (¹) | language wordlist | the decode works |
 | **OCR validation** | extracted strings | lexicon | the OCR read correctly |
 | **Spell-check eval** | candidate corrections | target vocabulary | the correction fired |
 | **Autocomplete ranking** | prefix expansions | vocab | the candidate is meaningful |
@@ -28,6 +28,11 @@ large enough that anything would match?
 If the input is short (2–4 chars) and the dictionary is large (10K+),
 naive hit-rate metrics are badly inflated by chance. This package fixes
 that.
+
+(¹) When the candidate plaintext was produced by a stochastic search
+over a key space (SA, hill-climbing), the *cipher symbols* themselves
+are also a relevant input — see [When your decode came from a
+search](#when-your-decode-came-from-a-search).
 
 ## Install
 
@@ -156,6 +161,48 @@ identity. On wrong-language evaluations the four-category framework
 is the only method among six tested that correctly reports signal as
 ≤ 0.
 
+## When your decode came from a search
+
+If your decoded tokens are the *output of a stochastic search* over a
+key space (simulated annealing on a substitution alphabet, hill-climbing,
+AZdecrypt, etc.), `net_signal` alone can mislead. The search itself can
+manufacture apparent signal: a quadgram-optimised key on a short cipher
+will find local optima that resolve into a handful of high-frequency
+dictionary words even when the cipher has no underlying linguistic
+structure. The Dorabella case (Ruckman 2026) documents this failure
+mode at +0.55 net_signal.
+
+The fix is to give the same search procedure the same matched-budget
+opportunity on **shuffles of the cipher** — multiset-preserving
+permutations that destroy positional content but keep the character
+budget constant. If the search finds materially more signal on the real
+cipher than on its shuffles, that excess is the calibrated signal.
+
+```python
+from dictcollision import search_calibrated_signal
+
+result = search_calibrated_signal(
+    cipher_symbols=cipher,        # the cipher itself, not decoded tokens
+    search_fn=my_sa_search,       # cipher -> decoded tokens
+    dictionary=word_set,
+    n_shuffles=30,
+)
+print(result.summary())
+# z_score >= 3 → search finds real signal
+# −1 ≤ z < 1   → indistinguishable from a shuffle baseline
+```
+
+`search_calibrated_signal` and `null_distribution` solve different
+problems:
+
+| Question | Use |
+|---|---|
+| "is this fixed decode's signal distinguishable from a bigram null?" | `null_distribution()` |
+| "does my search procedure find more signal on the real cipher than on shuffles of it?" | `search_calibrated_signal()` |
+
+Both can be informative; reach for `search_calibrated_signal` whenever
+the decoded tokens were chosen by a key-space optimiser.
+
 ## Full API
 
 ```python
@@ -166,6 +213,7 @@ from dictcollision import (
     recommend,                    # rank candidate dictionaries
     null_distribution,            # Monte Carlo null distribution
     bootstrap_ci,                 # bootstrap CI on net_signal
+    search_calibrated_signal,     # matched-budget shuffle calibration
     load_dictionary, load_tokens, # file loaders
 )
 
@@ -193,6 +241,7 @@ Self-contained scripts in [examples/](examples/):
 - [01_vigenere.py](examples/01_vigenere.py) — evaluate a Vigenere candidate key
 - [02_paper_table2.py](examples/02_paper_table2.py) — reproduce the six-method comparison
 - [03_dictionary_recommender.py](examples/03_dictionary_recommender.py) — pick the right dictionary without knowing the language
+- [04_search_calibrated.py](examples/04_search_calibrated.py) — calibrate a stochastic search against shuffle baseline
 
 ## Paper
 

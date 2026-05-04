@@ -76,3 +76,50 @@ def test_char_freqs_override():
     freqs = {"a": 0.1}
     result = noise_floor(tokens, dictionary, char_freqs=freqs)
     assert abs(result - 0.01) < 1e-9
+
+
+def test_word_weights_default_matches_unweighted():
+    tokens = ["ab", "cd"] * 5
+    dictionary = ["ab", "cd", "ef", "gh"]
+    # Empty/None weights => existing behavior.
+    base = noise_floor(tokens, dictionary)
+    none_weights = noise_floor(tokens, dictionary, word_weights=None)
+    assert base == none_weights
+
+
+def test_word_weights_zeros_yield_zero():
+    tokens = ["ab", "cd"] * 5
+    dictionary = ["ab", "cd", "ef"]
+    zero_weights = {w: 0.0 for w in dictionary}
+    result = noise_floor(tokens, dictionary, word_weights=zero_weights)
+    assert result == 0.0
+
+
+def test_word_weights_uniform_one_matches_unweighted():
+    tokens = ["ab", "cd"] * 5
+    dictionary = ["ab", "cd", "ef"]
+    base = noise_floor(tokens, dictionary)
+    one_weights = {w: 1.0 for w in dictionary}
+    weighted = noise_floor(tokens, dictionary, word_weights=one_weights)
+    assert abs(base - weighted) < 1e-12
+
+
+def test_word_weights_scales_proportionally():
+    tokens = ["ab", "cd"] * 5
+    dictionary = ["ab", "cd"]
+    base = noise_floor(tokens, dictionary)
+    two_weights = {w: 2.0 for w in dictionary}
+    weighted = noise_floor(tokens, dictionary, word_weights=two_weights)
+    assert abs(weighted - 2 * base) < 1e-9
+
+
+def test_word_weights_missing_word_defaults_to_one():
+    tokens = ["ab", "cd"] * 5
+    dictionary = ["ab", "cd"]
+    # Provide weight only for "ab"; "cd" implicitly has weight 1.0.
+    partial = {"ab": 0.0}
+    base = noise_floor(tokens, dictionary)
+    weighted = noise_floor(tokens, dictionary, word_weights=partial)
+    # base counts both words; weighted zeros "ab" and keeps "cd" at 1.0.
+    assert weighted < base
+    assert weighted > 0.0

@@ -104,6 +104,8 @@ def classify(
     shared_miss_tokens = 0
     signal_words: list[str] = []
     anti_signal_words: list[str] = []
+    signal_word_counts: dict[str, int] = {}
+    anti_signal_word_counts: dict[str, float] = {}
 
     all_types: set[str] = set(real_counts.keys())
     for null_corpus in nulls:
@@ -117,11 +119,13 @@ def classify(
         if in_dict and in_real and not in_null:
             signal_tokens += real_counts[w]
             signal_words.append(w)
+            signal_word_counts[w] = real_counts[w]
         elif in_dict and in_real and in_null:
             shared_hit_tokens += real_counts[w]
         elif in_dict and (not in_real) and in_null:
             anti_signal_tokens += null_mean.get(w, 0.0)
             anti_signal_words.append(w)
+            anti_signal_word_counts[w] = null_mean.get(w, 0.0)
         else:
             if in_real:
                 shared_miss_tokens += real_counts[w]
@@ -147,6 +151,8 @@ def classify(
         n_tokens=n_tokens,
         signal_words=signal_words,
         anti_signal_words=sorted(anti_signal_words),
+        signal_word_counts=signal_word_counts,
+        anti_signal_word_counts=anti_signal_word_counts,
     )
 
 

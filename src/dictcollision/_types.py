@@ -15,14 +15,24 @@ def _bar(fraction: float, width: int = 23) -> str:
     return "█" * filled + "░" * (width - filled)
 
 
-def _interpret_net_signal(net: float) -> str:
+def _interpret_net_signal(net: float, n_tokens: int | None = None) -> str:
     if net >= 0.20:
-        return "strong signal — dictionary is a good fit"
-    if net >= 0.05:
-        return "partial signal — possibly correct, check anti_signal_words"
-    if net > -0.02:
-        return "no signal beyond chance"
-    return "worse than random — wrong language or decode table"
+        base = "strong signal — dictionary is a good fit"
+    elif net >= 0.05:
+        base = "partial signal — possibly correct, check anti_signal_words"
+    elif net > -0.02:
+        base = "no signal beyond chance"
+    else:
+        base = "worse than random — wrong language or decode table"
+
+    if n_tokens is not None and n_tokens < 200:
+        suffix = (
+            f"\n  Note: text is short (n={n_tokens}). If decode came from "
+            "stochastic key search,\n  run search_calibrated_signal() — "
+            "absolute net_signal can mislead in this regime."
+        )
+        return base + suffix
+    return base
 
 
 @dataclass(frozen=True)
@@ -51,9 +61,16 @@ class ClassifyResult:
     n_tokens : int
         Total token count in the decoded corpus.
     signal_words : list[str]
-        Word types classified as signal.
+        Word types classified as signal, sorted by real-corpus count desc.
     anti_signal_words : list[str]
         Word types classified as anti-signal.
+    signal_word_counts : dict[str, int]
+        Per-word real-corpus counts for signal types. Sums to
+        signal * n_tokens.
+    anti_signal_word_counts : dict[str, float]
+        Per-word mean null-corpus counts for anti-signal types (floats
+        because they are means across n_nulls corpora). Sum approximates
+        anti_signal * n_tokens.
     """
 
     signal: float
@@ -66,6 +83,8 @@ class ClassifyResult:
     n_tokens: int
     signal_words: list[str] = field(default_factory=list)
     anti_signal_words: list[str] = field(default_factory=list)
+    signal_word_counts: dict[str, int] = field(default_factory=dict)
+    anti_signal_word_counts: dict[str, float] = field(default_factory=dict)
 
     def summary(self) -> str:
         """Human-readable interpretation of the result.
@@ -84,9 +103,30 @@ class ClassifyResult:
             f"  anti_signal  {self.anti_signal:>5.1%}  {_bar(self.anti_signal)}  phantom matches",
             f"  shared_miss  {self.shared_miss:>5.1%}  {_bar(self.shared_miss)}  non-dict tokens",
             "",
-            f"  Interpretation: {_interpret_net_signal(self.net_signal)}",
+            f"  Interpretation: {_interpret_net_signal(self.net_signal, self.n_tokens)}",
         ]
         return "\n".join(lines)
+
+    def overfit_score(self) -> float:
+        """Heuristic concentration score for the signal token mass.
+
+        Returns the fraction of signal tokens accounted for by the top
+        three signal word types. Real text typically sits below ~0.4;
+        SA-overfit decodes (e.g., a quadgram-optimised key that resolves
+        the cipher into a few repeated dictionary words) often exceed
+        ~0.7.
+
+        Thresholds are heuristic and require empirical calibration on
+        your domain. Returns 0.0 when there are no signal words.
+        """
+        if not self.signal_word_counts:
+            return 0.0
+        counts = sorted(self.signal_word_counts.values(), reverse=True)
+        total = sum(counts)
+        if total == 0:
+            return 0.0
+        top3 = sum(counts[:3])
+        return top3 / total
 
     def to_dict(self) -> dict:
         """Plain-dict form suitable for JSON serialization."""
@@ -103,6 +143,14 @@ class ClassifyResult:
             "n_anti_signal_words": len(self.anti_signal_words),
             "signal_words_top20": self.signal_words[:20],
             "anti_signal_words_top20": self.anti_signal_words[:20],
+            "signal_word_counts_top20": [
+                [w, self.signal_word_counts.get(w, 0)]
+                for w in self.signal_words[:20]
+            ],
+            "anti_signal_word_counts_top20": [
+                [w, self.anti_signal_word_counts.get(w, 0.0)]
+                for w in self.anti_signal_words[:20]
+            ],
         }
 
 
@@ -232,3 +280,87 @@ class BootstrapCI:
             f"net_signal = {self.point_estimate:.1%} "
             f"[{pct}% CI: {self.lower:.1%}, {self.upper:.1%}]"
         )
+
+
+@dataclass(frozen=True)
+class SearchCalibrationResult:
+    """Matched-budget shuffle calibration of a stochastic decode search.
+
+    Reports the net_signal of the search applied to the real cipher
+    alongside the distribution of net_signals obtained when the same
+    search procedure is applied to random shuffles of the cipher's
+    symbol multiset. The shuffle distribution captures what the search
+    can find by chance with the same character-multiset budget; the
+    z-score of the observed value against that distribution is the
+    calibrated signal.
+
+    See `dictcollision.search_calibrated_signal` for the constructor.
+
+    Attributes
+    ----------
+    observed_net_signal : float
+        net_signal from running search_fn on the real cipher.
+    shuffle_net_signals : list[float]
+        net_signal per shuffled-cipher run (length = n_shuffles).
+    shuffle_mean, shuffle_std : float
+        Sample mean and (n-1) standard deviation of shuffle_net_signals.
+        shuffle_std is 0.0 when n_shuffles < 2 or all shuffles tied.
+    z_score : float
+        (observed - shuffle_mean) / shuffle_std. 0.0 when shuffle_std == 0.
+    percentile : float
+        Percentile (0-100) of observed_net_signal within the shuffle
+        distribution. 100 = strictly above all shuffles.
+    n_shuffles : int
+    n_cipher_symbols : int
+    """
+
+    observed_net_signal: float
+    shuffle_net_signals: list[float]
+    shuffle_mean: float
+    shuffle_std: float
+    z_score: float
+    percentile: float
+    n_shuffles: int
+    n_cipher_symbols: int
+
+    def _interpretation(self) -> str:
+        if self.shuffle_std == 0.0:
+            return (
+                "shuffle distribution is degenerate (zero variance) — "
+                "search may be deterministic w.r.t. the symbol multiset"
+            )
+        if self.z_score >= 3.0:
+            return "above shuffle baseline — search finds real signal"
+        if self.z_score >= 1.0:
+            return "marginal — observed exceeds shuffle mean by ~1σ"
+        if self.z_score > -1.0:
+            return (
+                "indistinguishable from shuffle baseline — search finds "
+                "no more signal on the real cipher than on a shuffle"
+            )
+        return "below shuffle mean — search underperforms its own null"
+
+    def summary(self) -> str:
+        return (
+            f"SearchCalibrationResult (n_shuffles={self.n_shuffles}, "
+            f"n_cipher_symbols={self.n_cipher_symbols})\n"
+            f"  observed net_signal : {self.observed_net_signal:>7.1%}\n"
+            f"  shuffle mean        : {self.shuffle_mean:>7.1%}\n"
+            f"  shuffle std         : {self.shuffle_std:>7.1%}\n"
+            f"  z-score             : {self.z_score:>7.2f}\n"
+            f"  percentile          : {self.percentile:>5.1f}%  "
+            "(100 = above all shuffles)\n"
+            f"  Interpretation: {self._interpretation()}"
+        )
+
+    def to_dict(self) -> dict:
+        return {
+            "observed_net_signal": self.observed_net_signal,
+            "shuffle_net_signals": list(self.shuffle_net_signals),
+            "shuffle_mean": self.shuffle_mean,
+            "shuffle_std": self.shuffle_std,
+            "z_score": self.z_score,
+            "percentile": self.percentile,
+            "n_shuffles": self.n_shuffles,
+            "n_cipher_symbols": self.n_cipher_symbols,
+        }

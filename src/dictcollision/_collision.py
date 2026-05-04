@@ -49,6 +49,7 @@ def noise_floor(
     decoded_tokens: list[str],
     dictionary: Iterable[str],
     char_freqs: dict[str, float] | None = None,
+    word_weights: dict[str, float] | None = None,
 ) -> float:
     """Predict the chance-collision rate for decoded tokens against a dictionary.
 
@@ -69,10 +70,22 @@ def noise_floor(
     char_freqs : dict or None
         Character frequency distribution. If None, computed from
         decoded_tokens.
+    word_weights : dict[str, float] or None
+        Optional per-word weights applied to chance-collision
+        contributions. Default `None` weights every dictionary entry
+        equally (the paper's main formulation). Provide a mapping
+        (e.g. `-log(corpus_freq)`) when you want the noise floor to
+        reflect information value — a high-frequency function word
+        contributes its weight times its raw collision probability,
+        a rare content morpheme more. Words missing from the dict
+        get weight 1.0 (i.e., default behaviour). The result is no
+        longer guaranteed to lie in [0, 1] when weights are not
+        constant; treat it as a relative quantity in that mode.
 
     Returns
     -------
-    float in [0, 1]: predicted fraction of tokens matching by chance.
+    float: predicted fraction of tokens matching by chance. In `[0, 1]`
+    when `word_weights is None`; weighted otherwise.
 
     Examples
     --------
@@ -92,6 +105,8 @@ def noise_floor(
     for w in dictionary:
         dict_by_len.setdefault(len(w), []).append(w)
 
+    weighted = word_weights is not None
+
     p_hit_by_len: dict[int, float] = {}
     for L, words in dict_by_len.items():
         total_p = 0.0
@@ -101,8 +116,11 @@ def noise_floor(
                 p *= char_freqs.get(ch, 0.0)
                 if p == 0.0:
                     break  # early exit: impossible character
-            total_p += p
-        p_hit_by_len[L] = min(1.0, total_p)
+            if weighted:
+                total_p += word_weights.get(w, 1.0) * p
+            else:
+                total_p += p
+        p_hit_by_len[L] = total_p if weighted else min(1.0, total_p)
 
     # Aggregate over decoded corpus length distribution
     len_dist = token_length_distribution(decoded_tokens)

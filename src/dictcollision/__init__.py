@@ -27,6 +27,10 @@ Monte Carlo null distribution and bootstrap CI:
     >>> null_distribution(tokens, dictionary, n=40)
     >>> bootstrap_ci(tokens, dictionary, n=200)
 
+Search-procedure calibration (when decode came from a key-space search):
+    >>> from dictcollision import search_calibrated_signal
+    >>> search_calibrated_signal(cipher_symbols, search_fn, dictionary)
+
 Dictionary recommender:
     >>> from dictcollision import recommend
     >>> recommend(tokens, {"latin_10k": lat, "german_50k": de})
@@ -42,7 +46,7 @@ Based on: Ruckman (2026), "The Dictionary Collision Effect
 in Computational Decipherment." See github.com/mruckman1/signal-isolation-paper.
 """
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 from dictcollision._collision import (
     character_frequencies,
@@ -52,6 +56,7 @@ from dictcollision._collision import (
 from dictcollision._framework import classify, classify_by_length
 from dictcollision._io import load_dictionary, load_tokens
 from dictcollision._recommender import recommend
+from dictcollision._search import search_calibrated_signal
 from dictcollision._stats import bootstrap_ci, null_distribution
 from dictcollision._types import (
     BootstrapCI,
@@ -59,6 +64,7 @@ from dictcollision._types import (
     LengthBucket,
     NullDistribution,
     Recommendation,
+    SearchCalibrationResult,
 )
 
 __all__ = [
@@ -69,6 +75,7 @@ __all__ = [
     "recommend",
     "null_distribution",
     "bootstrap_ci",
+    "search_calibrated_signal",
     # I/O
     "load_dictionary",
     "load_tokens",
@@ -81,6 +88,7 @@ __all__ = [
     "LengthBucket",
     "NullDistribution",
     "BootstrapCI",
+    "SearchCalibrationResult",
     # Version
     "__version__",
 ]

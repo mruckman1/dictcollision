@@ -14,6 +14,25 @@ def test_classify_result_summary_contains_key_fields():
     assert "Interpretation" in s
 
 
+def test_short_text_summary_includes_search_calibration_hint():
+    # n=40 < 200 -> warning fires.
+    tokens = ["abcd", "efgh"] * 20
+    dictionary = {"abcd"}
+    r = classify(tokens, dictionary, n_nulls=3)
+    s = r.summary()
+    assert "search_calibrated_signal" in s
+    assert "n=40" in s
+
+
+def test_long_text_summary_omits_search_calibration_hint():
+    # n=300 > 200 -> warning suppressed.
+    tokens = ["xy", "zw"] * 150
+    dictionary = {"xy"}
+    r = classify(tokens, dictionary, n_nulls=3)
+    s = r.summary()
+    assert "search_calibrated_signal" not in s
+
+
 def test_classify_result_to_dict_serializable():
     import json
 
